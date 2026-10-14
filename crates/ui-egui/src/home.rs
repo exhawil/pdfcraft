@@ -40,11 +40,10 @@ pub fn show(app: &mut PdfCraftApp, ui: &mut egui::Ui) {
                         widgets::artcraft_mark(ui, 28.0);
                         ui.vertical(|ui| {
                             ui.label(egui::RichText::new(tl!("Join the ArtCraft community")).font(theme::semibold(15.0)));
-                            ui.label(egui::RichText::new(tl!("Get help, share feedback and follow development on Discord.")).color(t.text_muted));
                         });
                     });
                     ui.add_space(8.0);
-                    if let Some(cmd) = widgets::community_links(ui) {
+                    if let Some(cmd) = widgets::project_links(ui) {
                         app.execute(cmd);
                     }
                 });

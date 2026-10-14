@@ -17,6 +17,9 @@ fn main() {
         else {
             return;
         };
+        let korean_font = fetch_core_font("/__fw3/fonts/korean.ttf").await;
+        let cjk_font = fetch_core_font("/__fw3/fonts/cjk.ttf").await;
+        pdfcraft_ui_egui::theme::set_web_fonts(korean_font, cjk_font);
         let started = eframe::WebRunner::new()
             .start(
                 canvas,
@@ -84,6 +87,20 @@ fn main() {
             }
         }
     });
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn fetch_core_font(path: &str) -> Vec<u8> {
+    use eframe::wasm_bindgen::JsCast;
+    let Some(window) = web_sys::window() else { return Vec::new() };
+    let Ok(value) = wasm_bindgen_futures::JsFuture::from(window.fetch_with_str(path)).await else { return Vec::new() };
+    let Ok(response) = value.dyn_into::<web_sys::Response>() else { return Vec::new() };
+    if !response.ok() {
+        return Vec::new();
+    }
+    let Ok(buffer) = response.array_buffer() else { return Vec::new() };
+    let Ok(buffer) = wasm_bindgen_futures::JsFuture::from(buffer).await else { return Vec::new() };
+    js_sys::Uint8Array::new(&buffer).to_vec()
 }
 
 #[cfg(target_arch = "wasm32")]

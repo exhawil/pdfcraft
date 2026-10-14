@@ -3,8 +3,24 @@
 
 use std::sync::Arc;
 
+#[cfg(target_arch = "wasm32")]
+use std::cell::RefCell;
+
 use egui::epaint::text::{FontTweak, HintingTarget, SmoothHinting};
 use egui::{Color32, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Rect, Response, Stroke, Vec2, Visuals};
+
+#[cfg(target_arch = "wasm32")]
+thread_local! {
+    static WEB_FONTS: RefCell<(Option<Arc<FontData>>, Option<Arc<FontData>>)> = const { RefCell::new((None, None)) };
+}
+
+/// Register shared fonts fetched from the FW3 Core host before the first browser frame.
+#[cfg(target_arch = "wasm32")]
+pub fn set_web_fonts(korean: Vec<u8>, cjk: Vec<u8>) {
+    let korean = (!korean.is_empty()).then(|| Arc::new(FontData::from_owned(korean)));
+    let cjk = (!cjk.is_empty()).then(|| Arc::new(FontData::from_owned(cjk)));
+    WEB_FONTS.with(|fonts| *fonts.borrow_mut() = (korean, cjk));
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 pub enum ThemeKind {
@@ -237,7 +253,6 @@ pub const SYSTEM_TELUGU_FALLBACK: &str = "system-telugu-fallback";
 ///
 /// `PDFCRAFT_SYSTEM_FONTS=0` leaves them out.
 pub fn installed_font_definitions(cjk: CjkPreference) -> FontDefinitions {
-    #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
     let mut fonts = font_definitions_for(cjk == CjkPreference::SimplifiedChinese);
     #[cfg(not(target_arch = "wasm32"))]
     {
@@ -271,6 +286,22 @@ pub fn installed_font_definitions(cjk: CjkPreference) -> FontDefinitions {
             }
         }
     }
+    #[cfg(target_arch = "wasm32")]
+    WEB_FONTS.with(|shared| {
+        let (korean, han) = shared.borrow().clone();
+        if let Some(data) = han {
+            fonts.font_data.insert("fw3-cjk".into(), data);
+            for stack in fonts.families.values_mut() {
+                stack.push("fw3-cjk".into());
+            }
+        }
+        if let Some(data) = korean {
+            fonts.font_data.insert("fw3-korean".into(), data);
+            for stack in fonts.families.values_mut() {
+                stack.push("fw3-korean".into());
+            }
+        }
+    });
     fonts
 }
 

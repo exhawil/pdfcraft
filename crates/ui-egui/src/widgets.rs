@@ -522,11 +522,27 @@ pub fn artcraft_mark(ui: &mut egui::Ui, size: f32) -> Response {
 /// Buttons for every community link (`pdfcraft_engine::links`), Discord first and prominent.
 /// Returns the registry command of the one clicked.
 pub fn community_links(ui: &mut egui::Ui) -> Option<&'static str> {
+    community_links_filtered(ui, true)
+}
+
+/// Project links for the start page, without the Discord call to action.
+pub fn project_links(ui: &mut egui::Ui) -> Option<&'static str> {
+    community_links_filtered(ui, false)
+}
+
+fn community_links_filtered(ui: &mut egui::Ui, include_discord: bool) -> Option<&'static str> {
     let mut clicked = None;
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing = vec2(8.0, 8.0);
-        for (i, l) in pdfcraft_engine::links::LINKS.iter().enumerate() {
-            let resp = if i == 0 { icon_pill(ui, l.icon, tl!("Join our Discord"), true) } else { icon_pill(ui, l.icon, tl!(l.label), false) };
+        let mut first = true;
+        for l in pdfcraft_engine::links::LINKS.iter().filter(|link| include_discord || link.command != "help.discord") {
+            let resp = if include_discord && first {
+                first = false;
+                icon_pill(ui, l.icon, tl!("Join our Discord"), true)
+            } else {
+                first = false;
+                icon_pill(ui, l.icon, tl!(l.label), false)
+            };
             if resp.on_hover_text(l.url).clicked() {
                 clicked = Some(l.command);
             }
